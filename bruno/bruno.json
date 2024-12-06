@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Ethindia",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
