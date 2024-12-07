@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { FileIcon, FolderIcon } from 'lucide-react'
 import { useWallet } from "@suiet/wallet-kit"
 import {getFileIcon, getFileType} from "@/lib/utils";
 import Image from "next/image";

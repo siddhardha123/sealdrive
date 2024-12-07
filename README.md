@@ -21,6 +21,15 @@ SealDrive aims to revolutionize on-chain storage by providing a decentralized, r
 - Scalability: Accommodating growing user demands and large data volumes without compromising performance or reliability.
 - User Experience: Delivering a user-friendly interface akin to Google Drive while maintaining the security and privacy benefits of blockchain technology.
 
+# 🚀 Key Features
+- Sui Ecosystem Integration: Users can log in using Sui Wallet or any wallet within the Sui ecosystem, ensuring secure and seamless authentication.
+- Built on Walrus Protocol:
+    - Optimized storage with just 4-5 replicas for efficient data redundancy.
+Guaranteed data retrieval, 
+    - even if 2/3 of the network is down.
+- Wallet-to-Wallet Media Sharing: A unique feature that enables users to share files directly with other Sui users, enhancing peer-to-peer collaboration.
+- Decentralized & Efficient: Combines the advantages of decentralization with reliable, cost-effective storage.
+- User-Friendly Interface: Familiar, intuitive design inspired by Google Drive, tailored for Web3 users.
 
 
 

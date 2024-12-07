@@ -8,7 +8,7 @@ import { cn, getFileType } from "@/lib/utils";
 import Image from "next/image";
 import Thumbnail from "@/components/Thumbnail";
 import { MAX_FILE_SIZE } from "@/constants";
-import {redirect, usePathname} from "next/navigation";
+import {usePathname} from "next/navigation";
 
 interface Props {
     ownerId: string;
