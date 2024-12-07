@@ -27,7 +27,7 @@ const FileUploader = ({ walletAddress, accountId, className }: Props) => {
         formData.append('wallet_address', walletAddress);
         formData.append('accountId', accountId);
 
-        const uploadUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/walrus/upload`;
+        const uploadUrl = `/api/walrus/upload`;
 
         try {
             const response = await fetch(uploadUrl, {

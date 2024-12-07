@@ -12,7 +12,7 @@ const Shared = () => {
     useEffect(() => {
         const fetchBlobIds = async () => {
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/walrus/shared?wallet_address=${wallet.account?.address}`, { method: 'GET' });
+                const response = await fetch(`/api/walrus/shared?wallet_address=${wallet.account?.address}`, { method: 'GET' });
                 if (!response.ok) {
                     console.error("Failed to fetch blob IDs");
                     return [];
