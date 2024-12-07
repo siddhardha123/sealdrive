@@ -1,36 +1,37 @@
-import Card from "@/components/Card";
-import React, {useEffect, useState} from "react";
-import {useWallet} from "@suiet/wallet-kit";
+'use client'
 
+import React, { useEffect, useState } from "react"
+import { useWallet } from "@suiet/wallet-kit"
+import { Card } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import FileCard from "@/components/Card"
 
-const Media = () => {
-
-    const [validFiles, setValidFiles] = useState<string[]>([]);
-    const [loading, setLoading] = useState(true);
+export default function Media() {
+    const [validFiles, setValidFiles] = useState<Array<{ url: string; blob_id: string }>>([])
+    const [loading, setLoading] = useState(true)
     const wallet = useWallet()
 
     useEffect(() => {
         const fetchBlobIds = async () => {
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/walrus/get?wallet_address=${wallet.account?.address}`, { method: 'GET' });
+                const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/walrus/get?wallet_address=${wallet.account?.address}`, { method: 'GET' })
                 if (!response.ok) {
-                    console.error("Failed to fetch blob IDs");
-                    return [];
+                    console.error("Failed to fetch blob IDs")
+                    return []
                 }
-                const data = await response.json();
-                // Assuming the response contains an array of objects with a `blobId` property
-                return data?.result?.rows.map((item: { blobId: string }) => item.blob_id);
+                const data = await response.json()
+                return data?.result?.rows.map((item: { blobId: string }) => item.blob_id)
             } catch (error) {
-                console.error("Error fetching blob IDs:", error);
-                return [];
+                console.error("Error fetching blob IDs:", error)
+                return []
             }
-        };
+        }
 
         const fetchFiles = async () => {
-            const blobIds = await fetchBlobIds();
+            const blobIds = await fetchBlobIds()
             if (blobIds.length === 0) {
-                setLoading(false);
-                return;
+                setLoading(false)
+                return
             }
 
             try {
@@ -39,56 +40,55 @@ const Media = () => {
                         const response = await fetch(
                             `https://aggregator.walrus-testnet.walrus.space/v1/${blobId}`,
                             { method: 'GET' }
-                        );
+                        )
                         if (!response.ok) {
-                            console.error(`Failed to fetch blob ${blobId}`);
-                            return null;
+                            console.error(`Failed to fetch blob ${blobId}`)
+                            return null
                         }
-                        const blob = await response.blob();
+                        const blob = await response.blob()
                         return {
-                            url : URL.createObjectURL(blob),
-                            blob_id : blobId
-                        }; // Convert blob to URL
+                            url: URL.createObjectURL(blob),
+                            blob_id: blobId
+                        }
                     })
-                );
+                )
 
-                // Filter out any null values
-                const files = fetchedFiles.filter((file) => file.url !== null);
-                setValidFiles(files as string[]); // Set the valid files
+                const files = fetchedFiles.filter((file): file is { url: string; blob_id: string } => file !== null)
+                setValidFiles(files)
             } catch (error) {
-                console.error("Error fetching files:", error);
+                console.error("Error fetching files:", error)
             } finally {
-                setLoading(false);
+                setLoading(false)
             }
-        };
+        }
 
-        fetchFiles();
-    }, []);
+        fetchFiles()
+    }, [wallet.account?.address])
+
     return (
-        <div className="page-container">
-            <section className="w-full">
-                <div className="total-size-section">
-                    <p className="body-1">
-                        {/*Total size section*/}
-                    </p>
-                </div>
-            </section>
+        <div className="container mx-auto p-4">
+            <Card className="w-full mb-4 p-4">
+                <p className="text-lg font-medium">
+                    {/* Total size section */}
+                </p>
+            </Card>
 
-            {/* Render the files */}
             {loading ? (
-                <p>Loading files...</p>
-            ) : validFiles.length > 0 ? (
-                <section className="file-list">
-                    {validFiles.map((file, index) => (
-                        <Card key={index} img={file.url} blobId={file.blob_id} isShared={true} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {[...Array(4)].map((_, index) => (
+                        <Skeleton key={index} className="h-[200px] w-full" />
                     ))}
-                </section>
+                </div>
+            ) : validFiles.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {validFiles.map((file, index) => (
+                        <FileCard key={index} img={file.url} blobId={file.blob_id} isShared={true} />
+                    ))}
+                </div>
             ) : (
-                <p className="empty-list">No files uploaded</p>
+                <p className="text-center text-gray-500 mt-8">No files uploaded</p>
             )}
         </div>
-    );
-};
-
-export default Media;
+    )
+}
 

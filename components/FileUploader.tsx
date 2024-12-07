@@ -82,7 +82,7 @@ const FileUploader = ({ walletAddress, accountId, className }: Props) => {
     return (
         <div {...getRootProps()} className={cn("cursor-pointer", className)}>
             <input {...getInputProps()} />
-            <Button type="button" className="uploader-button" disabled={uploading}>
+            <Button type="button" className="" disabled={uploading}>
                 <Image
                     src="/assets/icons/upload.svg"
                     alt="upload"
