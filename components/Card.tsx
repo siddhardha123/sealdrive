@@ -15,6 +15,7 @@
     } from "@/components/ui/dialog"
     import { Input } from "@/components/ui/input"
     import { Label } from "@/components/ui/label"
+    import {getFileIcon, getFileType} from "@/lib/utils";
 
     interface FileCardProps {
         img: string
@@ -22,9 +23,8 @@
         isShared?: boolean
     }
 
-    export default function FileCard({ img, blobId, isShared = false }: FileCardProps) {
-        const [imageUrl, setImageUrl] = useState<string | null>(null)
-        const [fileName, setFileName] = useState('')
+    export default function FileCard({ img, blobId, isShared = false, fileName = '' }: FileCardProps) {
+       const [imageUrl, setImageUrl] = useState<string | null>(null)
         const [fileSize, setFileSize] = useState(0)
         const [walletAddress, setWalletAddress] = useState('')
         const [isModalOpen, setIsModalOpen] = useState(false)
@@ -40,10 +40,8 @@
             try {
                 const response = await fetch(url)
                 const blob = await response.blob()
-                const name = url.split('/').pop() || 'Unknown'
                 const size = blob.size
 
-                setFileName(name)
                 setFileSize(size)
             } catch (error) {
                 console.error('Error fetching file details:', error)
@@ -61,7 +59,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ wallet_address: walletAddress, blob_id: blobId }),
+                    body: JSON.stringify({ wallet_address: walletAddress, blob_id: blobId , file_name : fileName }),
                 })
 
                 if (response.ok) {
@@ -111,7 +109,10 @@
                             alt="File Preview"
                             className="w-full h-40 object-cover"
                             onError={(e) => {
-                                e.currentTarget.src = "https://cdn-icons-png.flaticon.com/512/4208/4208479.png";
+                                const { type, extension } = getFileType(fileName);
+                               const x   = getFileIcon(extension,type)
+                                e.currentTarget.src=x
+                                // e.currentTarget.src = "https://cdn-icons-png.flaticon.com/512/4208/4208479.png";
                             }}
                         />
                     ) : (
@@ -120,7 +121,7 @@
                         </div>
                     )}
                     <div className="p-4">
-                        <p className="text-sm font-medium truncate">{fileName}</p>
+                        <p className="text-sm font-medium truncate">{fileName?.length > 0 ? fileName : blobId}</p>
                         <p className="text-xs text-gray-500">{(fileSize / 1024).toFixed(2)} KB</p>
                         <div className="flex justify-between space-x-2 mt-2">
                             <Button variant="outline" size="sm" onClick={handleDownload}>

@@ -8,7 +8,7 @@ import { cn, getFileType } from "@/lib/utils";
 import Image from "next/image";
 import Thumbnail from "@/components/Thumbnail";
 import { MAX_FILE_SIZE } from "@/constants";
-import { usePathname } from "next/navigation";
+import {redirect, usePathname} from "next/navigation";
 
 interface Props {
     ownerId: string;
@@ -26,6 +26,7 @@ const FileUploader = ({ walletAddress, accountId, className }: Props) => {
         formData.append('file', file);
         formData.append('wallet_address', walletAddress);
         formData.append('accountId', accountId);
+        formData.append('file_name', file.name);
 
         const uploadUrl = `/api/walrus/upload`;
 

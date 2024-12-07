@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
         const file = formData.get('file') as File | null;
         const walletAddress = formData.get('wallet_address') as string;
         const accountId = formData.get('accountId') as string;
+        const file_name = formData.get('file_name') as string;
 
         if (!file || !walletAddress || !accountId) {
             console.error('Missing required fields:', { file: !!file, ownerId, accountId });
@@ -52,8 +53,8 @@ export async function POST(request: NextRequest) {
         const client = await pool.connect();
         try {
             const result = await client.query(
-                'INSERT INTO file_uploads (id, blob_id, wallet_address, created_at) VALUES ($1, $2, $3, $4) RETURNING id',
-                [uid, blobId, walletAddress, new Date()]
+                'INSERT INTO file_uploads (id, blob_id, wallet_address,file_name,created_at) VALUES ($1, $2, $3, $4,$5) RETURNING id',
+                [uid, blobId, walletAddress,file_name, new Date()]
             );
 
             const insertedId = result.rows[0].id;

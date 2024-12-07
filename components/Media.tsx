@@ -20,7 +20,11 @@ export default function Media() {
                     return []
                 }
                 const data = await response.json()
-                return data?.result?.rows.map((item: { blobId: string }) => item.blob_id)
+                const result = data?.result?.rows.map(item => ({
+                    blob_id: item.blob_id,
+                    file_name: item?.file_name
+                }))
+                return result
             } catch (error) {
                 console.error("Error fetching blob IDs:", error)
                 return []
@@ -28,33 +32,32 @@ export default function Media() {
         }
 
         const fetchFiles = async () => {
-            const blobIds = await fetchBlobIds()
-            if (blobIds.length === 0) {
+            const files = await fetchBlobIds()
+            if (files.length === 0) {
                 setLoading(false)
                 return
             }
 
             try {
                 const fetchedFiles = await Promise.all(
-                    blobIds.map(async (blobId) => {
+                    files.map(async (file) => {
                         const response = await fetch(
-                            `https://aggregator.walrus-testnet.walrus.space/v1/${blobId}`,
+                            `https://aggregator.walrus-testnet.walrus.space/v1/${file.blob_id}`,
                             { method: 'GET' }
                         )
                         if (!response.ok) {
-                            console.error(`Failed to fetch blob ${blobId}`)
+                            console.error(`Failed to fetch blob ${file.blob_id}`)
                             return null
                         }
                         const blob = await response.blob()
                         return {
                             url: URL.createObjectURL(blob),
-                            blob_id: blobId
+                            ...file
                         }
                     })
                 )
 
-                const files = fetchedFiles.filter((file): file is { url: string; blob_id: string } => file !== null)
-                setValidFiles(files)
+                setValidFiles(fetchedFiles)
             } catch (error) {
                 console.error("Error fetching files:", error)
             } finally {
@@ -67,11 +70,6 @@ export default function Media() {
 
     return (
         <div className="container mx-auto p-4">
-            <Card className="w-full mb-4 p-4">
-                <p className="text-lg font-medium">
-                    {/* Total size section */}
-                </p>
-            </Card>
 
             {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -82,7 +80,7 @@ export default function Media() {
             ) : validFiles.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {validFiles.map((file, index) => (
-                        <FileCard key={index} img={file.url} blobId={file.blob_id} isShared={true} />
+                        <FileCard key={index} img={file.url} blobId={file.blob_id} isShared={true} fileName={file.file_name}/>
                     ))}
                 </div>
             ) : (

@@ -17,7 +17,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <Sidebar
         walletAddress={wallet.account?.address}
         avatar={"/assets/images/sealImage.png"}
-        email={"sid@sid.com"}
       />
 
       <section className="flex h-full flex-1 flex-col">

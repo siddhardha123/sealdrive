@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const { blob_id, wallet_address } = await request.json();
+        const { blob_id, wallet_address , file_name} = await request.json();
 
         // Check if blob_id and wallet_address are provided
         if (!blob_id || !wallet_address) {
@@ -50,12 +50,11 @@ export async function POST(request: NextRequest) {
         const client = await pool.connect();
         try {
             const result = await client.query(
-                'INSERT INTO shared (id,blob_id, wallet_address, created_at) VALUES ($1, $2, $3,$4) RETURNING id',
-                [uid,blob_id, wallet_address, new Date()]
+                'INSERT INTO shared (id,blob_id, wallet_address, file_name ,created_at) VALUES ($1, $2, $3,$4,$5) RETURNING id',
+                [uid,blob_id, wallet_address, file_name,new Date()]
             );
 
             const insertedId = result.rows[0].id;
-            console.log('BlobId inserted into the database with id:', insertedId);
 
             return NextResponse.json({ message: 'Blob ID stored successfully.', blobId: blob_id });
         } catch (dbError) {

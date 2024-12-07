@@ -58,7 +58,6 @@ const Sidebar = ({ walletAddress, avatar, email }: Props) => {
               ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
               : walletAddress}
           </p>
-          <p className="caption">{email}</p>
         </div>
       </div>
     </aside>

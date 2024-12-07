@@ -1,25 +1,93 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { FileIcon, FolderIcon, UploadCloudIcon, PlusIcon, SettingsIcon } from 'lucide-react'
-import {useWallet} from "@suiet/wallet-kit";
+import { FileIcon, FolderIcon } from 'lucide-react'
+import { useWallet } from "@suiet/wallet-kit"
+import {getFileIcon, getFileType} from "@/lib/utils";
+import Image from "next/image";
+interface FileData {
+    file_name: string
+    created_at: string
+    blob_id: string
+    size: number
+    url: string
+}
 
 const Dash = () => {
-    // Mock data for demonstration
     const wallet = useWallet()
-    const storageUsed = 2;
-    const storageTotal = 15;
-    const storagePercentage = (storageUsed / storageTotal) * 100;
+    const [storageUsed, setStorageUsed] = useState(0)
+    const [storageTotal] = useState(15 * 1024 * 1024) // 15 MB in bytes
+    const [recentFiles, setRecentFiles] = useState<FileData[]>([])
 
-    const recentFiles = [
-        { name: "Project Proposal.docx", type: "file", size: "2.3 MB", date: "2023-12-05" },
-        { name: "Vacation Photos", type: "folder", size: "1.2 GB", date: "2023-11-28" },
-        { name: "Budget 2024.xlsx", type: "file", size: "5.1 MB", date: "2023-12-01" },
-    ];
-    function truncateAddress(address) {
-        if (!address || address.length <= 10) return address;
-        return `${address.slice(0, 5)}...${address.slice(-5)}`;
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await fetch(`/api/walrus/get?wallet_address=${wallet.account?.address}`)
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data')
+                }
+                const data = await response.json()
+
+                const fetchedFiles = await Promise.all(
+                    data.result.rows.map(async (file: Omit<FileData, 'size' | 'url'>) => {
+                        const response = await fetch(
+                            `https://aggregator.walrus-testnet.walrus.space/v1/${file.blob_id}`,
+                            { method: 'GET' }
+                        )
+                        if (!response.ok) {
+                            console.error(`Failed to fetch blob ${file.blob_id}`)
+                            return null
+                        }
+                        const blob = await response.blob()
+                        return {
+                            ...file,
+                            size: blob.size,
+                            url: URL.createObjectURL(blob)
+                        }
+                    })
+                )
+
+                const validFiles = fetchedFiles.filter((file): file is FileData => file !== null)
+                setRecentFiles(validFiles)
+
+                const totalUsed = validFiles.reduce((acc, file) => acc + file.size, 0)
+                setStorageUsed(totalUsed)
+            } catch (error) {
+                console.error('Error fetching data:', error)
+            }
+        }
+
+        fetchData()
+    }, [])
+
+    const storagePercentage = (storageUsed / storageTotal) * 100
+
+    function truncateAddress(address: string | undefined) {
+        if (!address || address.length <= 10) return address
+        return `${address.slice(0, 5)}...${address.slice(-5)}`
+    }
+
+    function formatSize(bytes: number) {
+        const units = ['B', 'KB', 'MB', 'GB']
+        let size = bytes
+        let unitIndex = 0
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024
+            unitIndex++
+        }
+        return `${size.toFixed(1)} ${units[unitIndex]}`
+    }
+
+    function formatDate(dateString: string) {
+        return new Date(dateString).toLocaleDateString()
+    }
+
+    const getImage = (name) => {
+      const {extension,type} =  getFileType(name)
+        return getFileIcon(extension,type)
     }
 
     return (
@@ -35,7 +103,7 @@ const Dash = () => {
                     <CardContent>
                         <Progress value={storagePercentage} className="mb-2" />
                         <p className="text-sm text-muted-foreground">
-                            {storageUsed} MB of {storageTotal} MB used
+                            {formatSize(storageUsed)} of {formatSize(storageTotal)} used
                         </p>
                     </CardContent>
                 </Card>
@@ -52,6 +120,9 @@ const Dash = () => {
                             <p className="text-sm text-muted-foreground">
                                 {truncateAddress(wallet.account?.address)}
                             </p>
+                            <p className="text-sm text-muted-foreground">
+                                {wallet?.name}
+                            </p>
                         </div>
                     </CardContent>
                 </Card>
@@ -63,16 +134,14 @@ const Dash = () => {
                 </CardHeader>
                 <CardContent>
                     <div className="divide-y">
-                        {recentFiles.map((file, index) => (
+                        {recentFiles.slice(0, Math.min(recentFiles.length, 3)).map((file, index) => (
                             <div key={index} className="flex items-center py-3">
-                                {file.type === 'file' ? (
-                                    <FileIcon className="mr-3 h-5 w-5 text-blue-500" />
-                                ) : (
-                                    <FolderIcon className="mr-3 h-5 w-5 text-yellow-500" />
-                                )}
+                                <Image  src={`${getImage(file.file_name)}`} width={30} height={30} className="mr-3 h-5 w-5 text-blue-500" alt={file.file_name}/>
                                 <div className="flex-grow">
-                                    <p className="font-medium">{file.name}</p>
-                                    <p className="text-sm text-muted-foreground">{file.size} • {file.date}</p>
+                                    <p className="font-medium">{file.file_name}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {formatSize(file.size)} • {formatDate(file.created_at)}
+                                    </p>
                                 </div>
                             </div>
                         ))}
@@ -80,8 +149,8 @@ const Dash = () => {
                 </CardContent>
             </Card>
         </div>
-    );
-};
+    )
+}
 
-export default Dash;
+export default Dash
 

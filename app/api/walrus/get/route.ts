@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
         const client = await pool.connect();
         try {
             const result = await client.query(
-                `select * from file_uploads where wallet_address = '${wallet_address}'`,
+                `select * from file_uploads where wallet_address = '${wallet_address}' order by created_at desc`,
             );
 
             return NextResponse.json({ message: 'File uploaded successfully and blobId stored.', result });
