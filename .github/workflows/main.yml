@@ -1,122 +1,58 @@
-name: Sync Markdown to Outline Wiki
+name: Sync README to Outline
 
 on:
   push:
     paths:
-      - 'README.md'        # ✅ triggers only when README.md changes
-      # - 'docs/*.mdx'     # (optional) add more file paths here
-  workflow_dispatch:        # ✅ Allow manual trigger from GitHub Actions UI
-    inputs:
-      file:
-        description: 'Markdown file to sync to Outline'
-        required: false
-        default: 'README.md'
+      - "README.md"   # Trigger only when README.md changes
+  workflow_dispatch:   # Allow manual trigger
 
-env:
-  MARKDOWN_FILE: 'README.md'                        # ✅ configurable at the top
-  OUTLINE_API_URL: https://app.getoutline.com/api
-  OUTLINE_COLLECTION_ID: 07467d87-b32c-4bfa-9535-b6d112ffb7e0
-  OUTLINE_DOCUMENT_ID: 26cc4d5c-edca-4e37-b727-69afc049d9b3  # ✅ not a secret
-  OUTLINE_API_TOKEN: ${{ secrets.OUTLINE_API_TOKEN }}
-  
 jobs:
   sync-outline:
     runs-on: ubuntu-latest
+
+    env:
+      OUTLINE_API_URL: "https://app.getoutline.com/api"
+      OUTLINE_API_TOKEN: ${{ secrets.OUTLINE_API_TOKEN }}
+      OUTLINE_COLLECTION_ID: "07467d87-b32c-4bfa-9535-b6d112ffb7e0"
+      OUTLINE_DOCUMENT_ID: "26cc4d5c-edca-4e37-b727-69afc049d9b3"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate Markdown file
-        run: |
-          if [ ! -f "$MARKDOWN_FILE" ]; then
-            echo "❌ File '$MARKDOWN_FILE' not found!"
-            exit 1
-          fi
-          echo "✅ Found file: $MARKDOWN_FILE"
+      - name: Install jq
+        run: sudo apt-get install -y jq
 
-      - name: Upload to Outline (create or update)
-        id: upload
+      - name: Sync README.md to Outline
         run: |
           set -e
 
-          CONTENT=$(cat "$MARKDOWN_FILE")
-          TITLE=$(basename "$MARKDOWN_FILE" | sed 's/\.[^.]*$//')
+          FILE_PATH="README.md"
+          TITLE=$(basename "$FILE_PATH" .md)
+          CONTENT=$(cat "$FILE_PATH" | jq -Rs .)
 
-          CONTENT_JSON=$(printf '%s' "$CONTENT" | jq -Rs .)
+          echo "🚀 Syncing '$FILE_PATH' to Outline as '$TITLE'..."
+          echo "📝 Updating existing document ($OUTLINE_DOCUMENT_ID)"
 
-          JSON_PAYLOAD=$(jq -n \
-            --arg title "$TITLE" \
-            --arg text "$CONTENT" \
-            --arg collectionId "$OUTLINE_COLLECTION_ID" \
-            '{
-              title: $title,
-              text: $text,
-              collectionId: $collectionId
-            }')
-
-          echo "🚀 Syncing '$MARKDOWN_FILE' to Outline as '$TITLE'..."
-
-          if [ -n "$OUTLINE_DOCUMENT_ID" ]; then
-            echo "📝 Updating existing document ($OUTLINE_DOCUMENT_ID)"
-            ENDPOINT="$OUTLINE_API_URL/documents.update"
-          else
-            echo "🆕 Creating new document"
-            ENDPOINT="$OUTLINE_API_URL/documents.create"
-          fi
-
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -X POST "$ENDPOINT" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Authorization: Bearer $OUTLINE_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "$JSON_PAYLOAD")
+            -d "$(jq -n \
+              --arg id "$OUTLINE_DOCUMENT_ID" \
+              --arg title "$TITLE" \
+              --argjson text "$CONTENT" \
+              '{id: $id, title: $title, text: $text, publish: true}')" \
+            "$OUTLINE_API_URL/documents.update")
 
-          BODY=$(echo "$RESPONSE" | head -n 1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
           STATUS=$(echo "$RESPONSE" | tail -n 1)
 
           echo "📡 HTTP Status: $STATUS"
+          echo "$BODY" | jq .
 
-          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
-            echo "✅ Outline sync successful."
-            DOC_ID=$(echo "$BODY" | jq -r '.data.id // empty')
-            if [ -n "$DOC_ID" ]; then
-              echo "🆔 Document ID: $DOC_ID"
-              echo "doc_id=$DOC_ID" >> "$GITHUB_OUTPUT"
-            fi
-          else
+          if [ "$STATUS" -ne 200 ]; then
             echo "❌ API call failed (HTTP $STATUS)"
-            echo "Response:"
-            echo "$BODY" | jq || echo "$BODY"
             exit 1
           fi
 
-      - name: Mark document read-only
-        if: success()
-        run: |
-          set -e
-          DOC_ID="${{ steps.upload.outputs.doc_id || env.OUTLINE_DOCUMENT_ID }}"
-          if [ -z "$DOC_ID" ]; then
-            echo "ℹ️ No document ID found — skipping read-only step."
-            exit 0
-          fi
-
-          echo "🔒 Setting document '$DOC_ID' to read-only..."
-
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -X POST "$OUTLINE_API_URL/documents.permissions.update" \
-            -H "Authorization: Bearer $OUTLINE_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"id\":\"$DOC_ID\",\"permission\":\"read\"}")
-
-          BODY=$(echo "$RESPONSE" | head -n 1)
-          STATUS=$(echo "$RESPONSE" | tail -n 1)
-
-          echo "📡 HTTP Status: $STATUS"
-
-          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
-            echo "✅ Document marked read-only."
-          else
-            echo "❌ Failed to update permissions (HTTP $STATUS)"
-            echo "$BODY" | jq || echo "$BODY"
-            exit 1
-          fi
+          echo "✅ Successfully updated '$TITLE' in Outline!"
