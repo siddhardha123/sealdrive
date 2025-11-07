@@ -5,6 +5,12 @@ on:
     paths:
       - 'README.md'        # ✅ triggers only when README.md changes
       # - 'docs/*.mdx'     # (optional) add more file paths here
+  workflow_dispatch:        # ✅ Allow manual trigger from GitHub Actions UI
+    inputs:
+      file:
+        description: 'Markdown file to sync to Outline'
+        required: false
+        default: 'README.md'
 
 env:
   MARKDOWN_FILE: 'README.md'                        # ✅ configurable at the top
