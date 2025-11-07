@@ -10,7 +10,7 @@
 # Project : Sealdrive
 
 
-# 💡 Problem Statements
+# 💡 Joist AI
 Data storage and accessibility are critical in a decentralized environment, yet most existing solutions rely heavily on centralized servers or require the entire network's availability for data retrieval. This dependency poses a significant challenge, especially in scenarios where a majority (2/3) of the network is down, leading to potential data loss or delayed access.
 
 SealDrive aims to revolutionize on-chain storage by providing a decentralized, resilient, and highly accessible storage solution. Leveraging the Walrus protocol, SealDrive ensures that user data remains retrievable even when 2/3 of the network is offline, addressing the following challenges:
