@@ -14,11 +14,11 @@ on:
 
 env:
   MARKDOWN_FILE: 'README.md'                        # ✅ configurable at the top
-  OUTLINE_API_URL: ${{ secrets.OUTLINE_API_URL }}   # e.g. https://your-outline.com/api
+  OUTLINE_API_URL: https://app.getoutline.com/api
+  OUTLINE_COLLECTION_ID: 07467d87-b32c-4bfa-9535-b6d112ffb7e0
+  OUTLINE_DOCUMENT_ID: 26cc4d5c-edca-4e37-b727-69afc049d9b3  # ✅ not a secret
   OUTLINE_API_TOKEN: ${{ secrets.OUTLINE_API_TOKEN }}
-  OUTLINE_COLLECTION_ID: ${{ secrets.OUTLINE_COLLECTION_ID }}
-  OUTLINE_DOCUMENT_ID: ${{ secrets.OUTLINE_DOCUMENT_ID }}   # optional if updating existing doc
-
+  
 jobs:
   sync-outline:
     runs-on: ubuntu-latest
