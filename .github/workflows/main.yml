@@ -3,8 +3,8 @@ name: Sync Markdown to Outline Wiki
 on:
   push:
     paths:
-      - 'README.md'        # ✅ Trigger only when this file changes
-      # - 'docs/guide.mdx' # (optional) you can add more files here
+      - 'README.md'        # ✅ triggers only when README.md changes
+      # - 'docs/*.mdx'     # (optional) add more file paths here
 
 env:
   MARKDOWN_FILE: 'README.md'                        # ✅ configurable at the top
@@ -21,21 +21,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate file exists
+      - name: Validate Markdown file
         run: |
           if [ ! -f "$MARKDOWN_FILE" ]; then
-            echo "❌ File $MARKDOWN_FILE not found!"
+            echo "❌ File '$MARKDOWN_FILE' not found!"
             exit 1
           fi
           echo "✅ Found file: $MARKDOWN_FILE"
 
-      - name: Upload to Outline
+      - name: Upload to Outline (create or update)
+        id: upload
         run: |
+          set -e
+
           CONTENT=$(cat "$MARKDOWN_FILE")
-          CONTENT_JSON=$(printf '%s' "$CONTENT" | jq -Rs .)
           TITLE=$(basename "$MARKDOWN_FILE" | sed 's/\.[^.]*$//')
 
-          # Build request payload
+          CONTENT_JSON=$(printf '%s' "$CONTENT" | jq -Rs .)
+
           JSON_PAYLOAD=$(jq -n \
             --arg title "$TITLE" \
             --arg text "$CONTENT" \
@@ -46,32 +49,68 @@ jobs:
               collectionId: $collectionId
             }')
 
+          echo "🚀 Syncing '$MARKDOWN_FILE' to Outline as '$TITLE'..."
+
           if [ -n "$OUTLINE_DOCUMENT_ID" ]; then
-            echo "📝 Updating existing Outline document..."
-            curl -s -o response.json -w "%{http_code}" \
-              -X PATCH "$OUTLINE_API_URL/documents/$OUTLINE_DOCUMENT_ID" \
-              -H "Authorization: Bearer $OUTLINE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "$JSON_PAYLOAD"
+            echo "📝 Updating existing document ($OUTLINE_DOCUMENT_ID)"
+            ENDPOINT="$OUTLINE_API_URL/documents.update"
           else
-            echo "🆕 Creating new Outline document..."
-            curl -s -o response.json -w "%{http_code}" \
-              -X POST "$OUTLINE_API_URL/documents.create" \
-              -H "Authorization: Bearer $OUTLINE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "$JSON_PAYLOAD"
+            echo "🆕 Creating new document"
+            ENDPOINT="$OUTLINE_API_URL/documents.create"
+          fi
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "$ENDPOINT" \
+            -H "Authorization: Bearer $OUTLINE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$JSON_PAYLOAD")
+
+          BODY=$(echo "$RESPONSE" | head -n 1)
+          STATUS=$(echo "$RESPONSE" | tail -n 1)
+
+          echo "📡 HTTP Status: $STATUS"
+
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
+            echo "✅ Outline sync successful."
+            DOC_ID=$(echo "$BODY" | jq -r '.data.id // empty')
+            if [ -n "$DOC_ID" ]; then
+              echo "🆔 Document ID: $DOC_ID"
+              echo "doc_id=$DOC_ID" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "❌ API call failed (HTTP $STATUS)"
+            echo "Response:"
+            echo "$BODY" | jq || echo "$BODY"
+            exit 1
           fi
 
       - name: Mark document read-only
         if: success()
         run: |
-          if [ -z "$OUTLINE_DOCUMENT_ID" ]; then
-            echo "ℹ️ Skipping read-only step (no document ID)"
+          set -e
+          DOC_ID="${{ steps.upload.outputs.doc_id || env.OUTLINE_DOCUMENT_ID }}"
+          if [ -z "$DOC_ID" ]; then
+            echo "ℹ️ No document ID found — skipping read-only step."
             exit 0
           fi
-          echo "🔒 Setting document to read-only..."
-          # Adjust this endpoint if your Outline supports permission editing
-          curl -s -X POST "$OUTLINE_API_URL/documents.permissions.update" \
+
+          echo "🔒 Setting document '$DOC_ID' to read-only..."
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "$OUTLINE_API_URL/documents.permissions.update" \
             -H "Authorization: Bearer $OUTLINE_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"id\":\"$OUTLINE_DOCUMENT_ID\",\"permission\":\"read\"}"
+            -d "{\"id\":\"$DOC_ID\",\"permission\":\"read\"}")
+
+          BODY=$(echo "$RESPONSE" | head -n 1)
+          STATUS=$(echo "$RESPONSE" | tail -n 1)
+
+          echo "📡 HTTP Status: $STATUS"
+
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
+            echo "✅ Document marked read-only."
+          else
+            echo "❌ Failed to update permissions (HTTP $STATUS)"
+            echo "$BODY" | jq || echo "$BODY"
+            exit 1
+          fi
